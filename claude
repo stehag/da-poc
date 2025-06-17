@@ -1,0 +1,250 @@
+I angular kan man sätta typ useUTC för att parsa och outputa datum i tidszonen utc, dock så har boningen möjlighet att använda utc i backend utan där måste det vara svensk tidszon, kan vi confirm så att parsing av datum/tid från backend sker i svensk tidszon och även sändning till backend i svensk tidszon, men att det ändå blir lokaliserat i frontend om man är i tex Finland, på typ samma sätt som med utc?
+
+
+ChatGPT sade:
+Begäran om o3 pro
+Reasoned for 12m 24s
+Sammanfattning
+Ja – det går att säkerställa att all kommunikation med ditt backend sker i svensk tidszon (Europe/Stockholm), medan användaren ändå får tiderna presenterade i sin egen lokala zon (t.ex. finsk tid). Nyckeln är att
+
+Skicka/ta emot ISO‑8601‑strängar med explicit offset (+01:00 eller +02:00).
+
+Tolka strängarna som “Europe/Stockholm” i frontend, gör eventuell datum‑/tid­‑logik där, och
+
+Växla till användarens aktuella tidszon först vid presentation.
+
+Varför inte bara använda DatePipe + DATE_PIPE_DEFAULT_OPTIONS?
+DatePipe tillåter bara fasta UTC‑offsetar (t.ex. 'GMT+1'). Den förstår inte IANA‑namn som Europe/Stockholm och byter alltså inte automatiskt offset när sommartiden slår om – det är dokumenterat som en känd begränsning
+angular.dev
+github.com
+. Därför behövs en DST‑medveten bibliotekslösning (Luxon, Day.js + timezone‑plugin eller date‑fns‑tz).
+
+1. Backend – serialisera alltid med svensk offset
+I Kotlin/Java:
+
+kotlin
+Kopiera
+val stockholm   = ZoneId.of("Europe/Stockholm")
+val formatter   = DateTimeFormatter.ISO_OFFSET_DATE_TIME      // 2025‑03‑23T14:30:00+01:00 / +02:00
+val isoString   = ZonedDateTime.now(stockholm).format(formatter)
+Strängen innehåller rätt offset oavsett sommar/vintertid. Samma format bör backend även acceptera vid POST/PUT.
+
+2. Frontend – gemensam adapter
+Installera t.ex. Luxon:
+
+bash
+Kopiera
+npm i luxon
+Skapa en gemensam DateService eller HttpInterceptor:
+
+ts
+Kopiera
+import { DateTime } from 'luxon';
+
+const SWEDEN_ZONE = 'Europe/Stockholm';
+
+// --- När data kommer från servern -------------
+parseFromBackend(iso: string) {
+  // Tolka exakt som svensk tid
+  return DateTime.fromISO(iso, { zone: SWEDEN_ZONE });
+}
+
+// --- Innan vi skickar till servern ------------
+toBackend(local: Date) {
+  return DateTime.fromJSDate(local)
+          .setZone(SWEDEN_ZONE, { keepLocalTime: true })  // behåll väggklockan
+          .toISO({ suppressMilliseconds: true });
+}
+✔️ keepLocalTime: true gör att “2025‑04‑05 13:00” som användaren valt får samma väggklocka i Sverige, även om personen sitter i Finland (Luxon‑exempel
+github.com
+).
+
+3. Presentation i Angular
+A. Egen pipe som ersätter DatePipe
+ts
+Kopiera
+@Pipe({ name: 'svDate' })
+export class SwedishDatePipe implements PipeTransform {
+  transform(value: string | Date, format = DateTime.DATETIME_MED) {
+    const sw = typeof value === 'string'
+        ? DateTime.fromISO(value, { zone: SWEDEN_ZONE })
+        : DateTime.fromJSDate(value).setZone(SWEDEN_ZONE);
+
+    // Visa i besökarens tidszon
+    return sw.setZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+             .toLocaleString(format);
+  }
+}
+Användning:
+
+html
+Kopiera
+{{ order.date | svDate:'yyyy-LL-dd HH:mm' }}
+B. Material‑datepicker
+Om du använder Angular Material:
+
+ts
+Kopiera
+providers: [
+  { provide: MAT_DATE_LOCALE, useValue: 'sv-SE' },
+  { provide: DateAdapter,    useClass: LuxonDateAdapter } // egen adapter
+]
+4. Testflöde
+Scenario	Backend sträng	Finsk klient (UTC + 3) ser	Svensk klient (UTC + 2) ser
+Vinter	2025‑01‑10T09:00:00+01:00	10:00	09:00
+Sommar	2025‑06‑10T09:00:00+02:00	10:00	09:00
+
+(DST‑skillnaden hanteras korrekt tack vare Luxon/date‑fns‑tz.)
+
+5. Fallgropar & tips
+Problem	Lösning
+DatePipe visar 1 h fel när du anger 'GMT+1' i juli	Använd bibliotek som förstår IANA‑zoner (Luxon, date‑fns‑tz)
+github.com
+Backend skickar “local” ISO utan offset	Lägg alltid till Z (UTC) eller korrekt +01:00/+02:00. En sträng utan offset tolkas som klientens lokala tid av alla moderna browsers
+angularminds.com
+Behöver global standardformat i appen	DATE_PIPE_DEFAULT_OPTIONS kan sätta format, men inte Europe/Stockholm med sommartid. Använd egen pipe/adapters för allt som når UI.
+Angular forms tappar timme vid JSON‑roundtrip	Håll datan som ISO‑sträng i form‑kontrollerna, konvertera först i submit‑steget.
+
+TL;DR
+Backend skickar/ta emot ISO‑strängar med Europe/Stockholm‑offset.
+
+Frontend tolkar dem som svensk tid → byter zon först vid visning.
+
+Använd Luxon, date‑fns‑tz eller motsv. för korrekt DST‑hantering; DatePipe räcker inte.
+Med detta är parsing/sändning alltid svensk tidszon, samtidigt som varje användare ser sin lokala tid.
+
+
+
+
+
+
+
+
+
+
+
+Källor
+Du sade:
+Så vinintresserade använda timestamps dvs long i kommunikation med backend på samma sätt som vi kan i utc?
+
+
+ChatGPT sade:
+
+
+
+
+
+Du sade:
+Så vi kan inte använda longs i kommunikation med servern? I backend har vi date och timestamp(6) I oracle
+
+
+ChatGPT sade:
+Begäran om o3 pro
+Reasoned for 16m 13s
+### Kort svar
+Jo, du kan absolut fortsätta skicka ett long (Unix‑epoch i millisekunder) mellan Angular‑klienten och ditt API – även när databasen lagrar DATE/TIMESTAMP(6) i svensk tid. Epoch‑talet är definitionsmässigt i UTC och är därför helt zon‑agnostiskt 
+epochconverter.com
+.
+Det viktiga är att all konvertering till/från epoch görs med zonen Europe/Stockholm innan du pratar med Oracle, och först därefter växlar du till besökarens lokala zon i UI:t.
+
+## 1. Dataflöde med long
+
+text
+Kopiera
+Angular‑form (lokal väggklocka i Sverige)
+      ↓  (Luxon: zon Europe/Stockholm)
+epoch‑millis (long, UTC)
+      ↓  (Java/Kotlin: Instant)
+LocalDateTime  ⇄  Oracle TIMESTAMP(6)   // svensk zon
+      ↑
+LocalDateTime (Europe/Stockholm)
+      ↑  (Instant → epoch)
+epoch‑millis (long, UTC)
+      ↑  (Luxon: epoch → användarens zon)
+UI‑presentation (t.ex. Finland, +1 h)
+## 2. Frontend – konvertera korrekt
+
+ts
+Kopiera
+import { DateTime } from 'luxon';
+
+const SE_ZONE = 'Europe/Stockholm';
+
+/** Från form‑kontroll (date & time väljare) till long */
+export function toEpochMillis(local: DateTime): number {
+  // local = användarens inmatning *som ska tolkas som svensk tid*
+  return local.setZone(SE_ZONE, { keepLocalTime: true }).toMillis();
+}
+
+/** Från long → DateTime i användarens tidszon för presentation */
+export function fromEpochMillis(millis: number): DateTime {
+  return DateTime.fromMillis(millis)
+                 .setZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+}
+Luxon stödjer både .fromMillis() och .fromSeconds() direkt 
+stackoverflow.com
+.
+
+## 3. Backend – Java/Kotlin‑exempel
+
+kotlin
+Kopiera
+val stockholm = ZoneId.of("Europe/Stockholm")
+
+// ---------- inkommmande long → LocalDateTime ----------
+fun fromClient(epoch: Long): LocalDateTime =
+    Instant.ofEpochMilli(epoch)
+           .atZone(stockholm)         // 1) tolka som svensk tid
+           .toLocalDateTime()         // 2) kasta tidszons‑delen, passar TIMESTAMP(6)
+
+// ---------- LocalDateTime → long till klient ----------
+fun toClient(ldt: LocalDateTime): Long =
+    ldt.atZone(stockholm)             // behandla fältet som svensk väggklocka
+       .toInstant()
+       .toEpochMilli()
+Varför inte Instant direkt i databasen?
+Ni använder DATE/TIMESTAMP(6) som inte lagrar någon zon 
+docs.oracle.com
+docs.oracle.com
+. Därför måste zoninformationen läggas på program‑sidan varje gång.
+
+## 4. Oracle – tre viktiga varianter
+
+Typ	Lagrar zon?	Rekommendation
+DATE	❌	Använd endast för datum eller svensk lokal tid.
+TIMESTAMP(6)	❌	OK om ni alltid sparar/tolkar som Europe/Stockholm.
+TIMESTAMP WITH LOCAL TIME ZONE	➖ (normaliserar till DB‑zon)	Kan förenkla konverteringen: DB gör UTC ⇄ session‑zon åt er.
+
+Vill ni undvika explicit Java‑kod kan ni byta kolumnerna till TIMESTAMP WITH LOCAL TIME ZONE; Oracle lagrar då UTC internt och skickar ut rätt offset för användarens session automatiskt 
+stackoverflow.com
+.
+
+## 5. Fallgropar med long
+
+Problem	Så undviker du det
+Fel timme vid sommartid
+om man konverterar med system‑zonen i Finland i stället för Sverige	Alltid .setZone('Europe/Stockholm', { keepLocalTime:true }) innan .toMillis().
+“Saknade” tider (t.ex. 2025‑03‑30 02:15 finns inte i Sverige p.g.a. DST‑skiftet)	Validera input och blockera “ogiltiga” lokal‑tider.
+Dubbla tider (hösten, 02:30 inträffar två gånger)	Besluta strategi: ta första eller andra offset. Luxon tillåter setZone(..., { keepLocalTime:true, keepCalendarTime:true }).
+Svårt att felsöka	Logga både epoch och ISO‑sträng med offset i dev‑läge.
+
+## 6. När är ISO‑sträng bättre?
+
+Mänskligt läsbar i loggar & SQL‑dump.
+
+Innehåller offset och kräver ingen out‑of‑band‑regel (“allt är Sverige”).
+
+Ingen risk för feltolkning om någon sätter fel zonflagga i kod.
+
+Prestanda‑skillnaden (8 byte vs ~25 byte) är nästan alltid irrelevant i ett REST‑anrop.
+
+### TL;DR
+
+Ja, long/epoch funkar lika bra som vid en ren UTC‑lösning.
+
+Se bara till att lägga till/ta bort zon Europe/Stockholm i konverterings‑lagret (Angular‑service ↔ Java‑service).
+
+I databasen lagras fortsatt svensk lokal tid, men trafiken över nätet är zon‑agnostisk och presenteras korrekt för varje användare.
+
+
+[{"dtoClass":"SelectableFieldDTO","id":543578068,"fieldDbId":{"value":543578068},"techKey":"ProjectType","code":null,"fieldDefinitionId":8213,"value":"6931","longValue":null,"doubleValue":null,"typedFieldDefinitionId":"8213","permission":"READ","permissionOverride":null,"selectedValue":{"id":6931,"displayName":"Small-scale project","techKey":"ProjectType_OP0","rowIndex":0},"comment":null},{"dtoClass":"DateFieldDTO","id":543578082,"fieldDbId":{"value":543578082},"techKey":"ProjectStartDate","code":null,"fieldDefinitionId":8214,"value":null,"longValue":1750284000000,"doubleValue":null,"typedFieldDefinitionId":"8214","permission":"READ","permissionOverride":null},{"dtoClass":"DateFieldDTO","id":543578081,"fieldDbId":{"value":543578081},"techKey":"ProjectEndDate","code":null,"fieldDefinitionId":8215,"value":null,"longValue":1750370400000,"doubleValue":null,"typedFieldDefinitionId":"8215","permission":"READ","permissionOverride":null},{"dtoClass":"SelectableFieldDTO","id":543578080,"fieldDbId":{"value":543578080},"techKey":"ProgrammeSubArea","code":null,"fieldDefinitionId":8216,"value":"6934","longValue":null,"doubleValue":null,"typedFieldDefinitionId":"8216","permission":"READ","permissionOverride":null,"selectedValue":{"id":6934,"displayName":"Sápmi","techKey":"ProgrammeSubArea_OP1","rowIndex":1},"comment":null}]

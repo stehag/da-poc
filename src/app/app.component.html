@@ -138,6 +138,29 @@
       [deadlineTime]="deadlineTime">
     </app-deadline-display>
 
+    <div class="new-components-section">
+      <h2>Nya komponenter för svenska datum</h2>
+      
+      <div class="component-demo">
+        <h3>Svenska datumväljare</h3>
+        <p>Denna komponent visar varning när användaren inte är i Sverige:</p>
+        <app-swedish-date-picker 
+          label="Välj projektdatum"
+          (dateSelected)="onSwedishDateSelected($event)">
+        </app-swedish-date-picker>
+      </div>
+
+      <div class="component-demo">
+        <h3>Svensk deadline-information</h3>
+        <p>Visar deadline i svensk tid och konverterar till användarens tidszon:</p>
+        <app-swedish-deadline-info
+          title="Sista inlämningsdatum för ansökan"
+          deadlineDate="2025-06-25"
+          deadlineTime="17:00">
+        </app-swedish-deadline-info>
+      </div>
+    </div>
+
     <div class="explanation">
       <h2>Hur det fungerar</h2>
       <ul>
@@ -298,6 +321,39 @@ pre {
 }
 
 .timezone-header p {
+  color: #6c757d;
+  margin-bottom: 1rem;
+}
+
+.new-components-section {
+  background: #f0f8ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 2rem 0;
+}
+
+.new-components-section h2 {
+  color: #1976d2;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.component-demo {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.component-demo h3 {
+  color: #2c3e50;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.component-demo p {
   color: #6c757d;
   margin-bottom: 1rem;
 }

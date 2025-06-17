@@ -4,6 +4,8 @@ import { DateService } from './date.service';
 import { CommonModule } from '@angular/common';
 import { TimezoneDisplayComponent } from './timezone-display.component';
 import { DeadlineDisplayComponent } from './deadline-display.component';
+import { SwedishDatePickerComponent } from './swedish-date-picker.component';
+import { SwedishDeadlineInfoComponent } from './swedish-deadline-info.component';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -32,6 +34,8 @@ const LUXON_DATE_FORMATS = {
     CommonModule,
     TimezoneDisplayComponent,
     DeadlineDisplayComponent,
+    SwedishDatePickerComponent,
+    SwedishDeadlineInfoComponent,
     MatDatepickerModule,
     MatInputModule,
     MatFormFieldModule,
@@ -167,5 +171,11 @@ export class AppComponent {
   // Helper method for template
   getYesterdayTimestamp(): number {
     return Date.now() - 86400000;
+  }
+
+  // Handle Swedish date picker selection
+  onSwedishDateSelected(date: DateTime) {
+    console.log('Swedish date selected:', date.toISO());
+    // Here you could update other components or send to backend
   }
 }

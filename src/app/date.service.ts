@@ -12,7 +12,7 @@ export class DateService {
    * Backend stores data as Swedish time, but sends epoch millis
    */
   fromBackendEpoch(epochMillis: number): DateTime {
-    // Epoch is always UTC, but backend created it from Swedish time
+    // Backend epoch represents Swedish time, display in user timezone
     return DateTime.fromMillis(epochMillis)
       .setZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
   }

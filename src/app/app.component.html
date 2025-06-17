@@ -7,6 +7,55 @@
       <h2>Din tidszon: {{ dateService.getUserTimezone() }}</h2>
     </div>
 
+    <div class="date-picker-section">
+      <h2>Välj datum för backend</h2>
+      <p>Välj ett datum som ska skickas till backend (lagras som svensk tid)</p>
+      
+      <div class="picker-container">
+        <mat-form-field appearance="outline">
+          <mat-label>Välj datum</mat-label>
+          <input matInput [matDatepicker]="picker" [formControl]="dateControl">
+          <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
+        
+        <button mat-raised-button color="primary" 
+                [disabled]="!dateControl.value" 
+                (click)="sendToBackend()">
+          Skicka till Backend
+        </button>
+      </div>
+
+      @if (selectedDateInfo) {
+        <div class="conversion-info">
+          <h3>Konvertering till Backend</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <strong>Valt datum:</strong> 
+              {{ selectedDateInfo.selectedDate | date:'d MMM yyyy, HH:mm':'sv-SE' }}
+            </div>
+            <div class="info-item">
+              <strong>Epoch för backend:</strong> 
+              {{ selectedDateInfo.epochForBackend }}
+            </div>
+            <div class="info-item">
+              <strong>Som svensk tid:</strong> 
+              {{ selectedDateInfo.backAsSwedishTime | date:'d MMM yyyy, HH:mm':'sv-SE' }}
+            </div>
+            <div class="info-item">
+              <strong>Som din lokala tid:</strong> 
+              {{ selectedDateInfo.backAsUserTime | date:'d MMM yyyy, HH:mm':'sv-SE' }}
+            </div>
+          </div>
+          
+          <details>
+            <summary>Fullständig debug-info</summary>
+            <pre>{{ selectedDateInfo | json }}</pre>
+          </details>
+        </div>
+      }
+    </div>
+
     <div class="sample-dates">
       <h2>Sample Data från Backend</h2>
       @for (item of sampleData; track item.techKey) {
@@ -24,6 +73,71 @@
       }
     </div>
 
+    <div class="timezone-section">
+      <div class="timezone-header">
+        <h2>Tidszoner runt världen</h2>
+        <p>Visar samma timestamp i 24 olika tidszoner (Sverige markerad i blått)</p>
+        
+        <div class="timestamp-controls">
+          <div class="current-display">
+            <strong>Visar:</strong> 
+            <span [class.live-indicator]="isLiveTime">
+              {{ isLiveTime ? 'Aktuell tid (uppdateras live)' : getReadableDate(currentTimestamp) }}
+            </span>
+          </div>
+          
+          <div class="control-buttons">
+            <button mat-raised-button color="accent" 
+                    [disabled]="isLiveTime"
+                    (click)="showCurrentTime()">
+              Visa aktuell tid
+            </button>
+          </div>
+          
+          <div class="custom-timestamp">
+            <mat-form-field appearance="outline" class="timestamp-input">
+              <mat-label>Ange timestamp (millisekunder)</mat-label>
+              <input matInput 
+                     type="number" 
+                     [formControl]="customTimestampControl"
+                     placeholder="t.ex. 1750284000000">
+            </mat-form-field>
+            <button mat-raised-button 
+                    color="primary"
+                    [disabled]="!customTimestampControl.value"
+                    (click)="setCustomTimestamp()">
+              Visa timestamp
+            </button>
+          </div>
+          
+          <div class="sample-timestamps">
+            <p><strong>Exempel timestamps:</strong></p>
+            <div class="sample-buttons">
+              <button mat-stroked-button 
+                      (click)="customTimestampControl.setValue(1750284000000); setCustomTimestamp()">
+                2025-06-19 00:00 ({{ 1750284000000 }})
+              </button>
+              <button mat-stroked-button 
+                      (click)="customTimestampControl.setValue(1750370400000); setCustomTimestamp()">
+                2025-06-20 00:00 ({{ 1750370400000 }})
+              </button>
+              <button mat-stroked-button 
+                      (click)="customTimestampControl.setValue(getYesterdayTimestamp()); setCustomTimestamp()">
+                Igår
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <app-timezone-display [timestamp]="currentTimestamp"></app-timezone-display>
+    </div>
+
+    <app-deadline-display 
+      [deadlineDate]="deadlineDate" 
+      [deadlineTime]="deadlineTime">
+    </app-deadline-display>
+
     <div class="explanation">
       <h2>Hur det fungerar</h2>
       <ul>
@@ -31,6 +145,7 @@
         <li>Backend skickar epoch millisekunder ({{ sampleData[0].longValue }})</li>
         <li>Frontend tolkar epoch som UTC och konverterar till din tidszon</li>
         <li>Resultat: Du ser rätt lokaliserad tid trots att backend är i svensk tid</li>
+        <li>Välj ett datum ovan för att se det i alla tidszoner samtidigt</li>
       </ul>
     </div>
   </div>
@@ -121,5 +236,155 @@ pre {
 
 .explanation li {
   margin: 0.5rem 0;
+}
+
+.date-picker-section {
+  background: #f0f8ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+}
+
+.picker-container {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  margin: 1rem 0;
+}
+
+.picker-container mat-form-field {
+  flex: 1;
+  max-width: 300px;
+}
+
+.conversion-info {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.info-item {
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+}
+
+.timezone-section {
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 2rem 0;
+}
+
+.timezone-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.timezone-header h2 {
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.timezone-header p {
+  color: #6c757d;
+  margin-bottom: 1rem;
+}
+
+.timestamp-controls {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.current-display {
+  text-align: center;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  font-size: 1.1rem;
+}
+
+.live-indicator {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.control-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.custom-timestamp {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.timestamp-input {
+  flex: 1;
+  min-width: 250px;
+  max-width: 400px;
+}
+
+.sample-timestamps {
+  text-align: center;
+}
+
+.sample-timestamps p {
+  margin: 0.5rem 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.sample-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.sample-buttons button {
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .timestamp-controls {
+    padding: 1rem;
+  }
+  
+  .custom-timestamp {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .timestamp-input {
+    min-width: auto;
+    max-width: none;
+  }
+  
+  .sample-buttons {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
 }
 </style>

@@ -118,6 +118,19 @@ const SWEDISH_DATE_FORMATS = {
 
     .date-field {
       width: 100%;
+      background: white;
+    }
+
+    ::ng-deep .mat-mdc-form-field {
+      background: white !important;
+    }
+
+    ::ng-deep .mat-mdc-text-field-wrapper {
+      background: white !important;
+    }
+
+    ::ng-deep .mat-mdc-form-field-outline {
+      background: white !important;
     }
 
     .date-preview {

@@ -20,6 +20,7 @@ interface DeadlineInfo {
     <div class="deadline-container">
       <div class="deadline-header">
         <h3>Deadline: {{ swedishDeadline?.toFormat('d MMM yyyy, HH:mm') }} (svensk tid)</h3>
+        <p class="timestamp-info">Timestamp: {{ getSwedishTimestamp() }}</p>
         <p>Så här ser deadlinen ut i olika tidszoner:</p>
       </div>
       
@@ -66,6 +67,16 @@ interface DeadlineInfo {
     .deadline-header p {
       color: #6c757d;
       margin: 0;
+    }
+
+    .timestamp-info {
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #495057 !important;
+      background: #f8f9fa;
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin: 0.5rem 0 !important;
     }
 
     .deadline-grid {
@@ -222,5 +233,9 @@ export class DeadlineDisplayComponent implements OnChanges {
         isSwedish: tz.isSwedish
       };
     });
+  }
+
+  getSwedishTimestamp(): number {
+    return this.swedishDeadline?.toMillis() || 0;
   }
 }

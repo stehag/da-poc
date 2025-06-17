@@ -8,6 +8,8 @@ interface TimezoneInfo {
   city: string;
   country: string;
   isSwedish?: boolean;
+  isDST?: boolean;
+  offsetHours?: number;
 }
 
 @Component({
@@ -29,7 +31,10 @@ interface TimezoneInfo {
             {{ getDateInTimezone(timezone.zone) }}
           </div>
           <div class="timezone-name">
-            {{ timezone.name }}
+            {{ getTimezoneLabel(timezone.zone) }}
+          </div>
+          <div class="dst-info" [class.dst-active]="isDSTActive(timezone.zone)">
+            {{ getDSTStatus(timezone.zone) }}
           </div>
         </div>
       }
@@ -105,6 +110,23 @@ interface TimezoneInfo {
       font-family: monospace;
     }
 
+    .dst-info {
+      font-size: 0.7rem;
+      color: #6c757d;
+      margin-top: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+    }
+
+    .dst-active {
+      background: #fff3cd !important;
+      border-color: #ffeaa7 !important;
+      color: #856404 !important;
+      font-weight: 600;
+    }
+
     @media (max-width: 768px) {
       .timezone-grid {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -138,9 +160,9 @@ export class TimezoneDisplayComponent implements OnChanges {
     { name: 'UTC-2', zone: 'Atlantic/South_Georgia', city: 'South Georgia', country: 'UK' },
     { name: 'UTC-1', zone: 'Atlantic/Azores', city: 'Azores', country: 'Portugal' },
     { name: 'UTC+0', zone: 'Europe/London', city: 'London', country: 'UK' },
-    { name: 'UTC+1', zone: 'Europe/Stockholm', city: 'Stockholm', country: 'Sverige', isSwedish: true },
-    { name: 'UTC+2', zone: 'Europe/Helsinki', city: 'Helsinki', country: 'Finland' },
-    { name: 'UTC+3', zone: 'Europe/Moscow', city: 'Moscow', country: 'Russia' },
+    { name: 'CEST', zone: 'Europe/Stockholm', city: 'Stockholm', country: 'Sverige', isSwedish: true },
+    { name: 'EEST', zone: 'Europe/Helsinki', city: 'Helsinki', country: 'Finland' },
+    { name: 'MSK', zone: 'Europe/Moscow', city: 'Moscow', country: 'Russia' },
     { name: 'UTC+4', zone: 'Asia/Dubai', city: 'Dubai', country: 'UAE' },
     { name: 'UTC+5', zone: 'Asia/Karachi', city: 'Karachi', country: 'Pakistan' },
     { name: 'UTC+6', zone: 'Asia/Dhaka', city: 'Dhaka', country: 'Bangladesh' },
@@ -167,5 +189,26 @@ export class TimezoneDisplayComponent implements OnChanges {
     return DateTime.fromMillis(this.timestamp)
       .setZone(timezone)
       .toFormat('yyyy-MM-dd');
+  }
+
+  getTimezoneLabel(timezone: string): string {
+    const dt = DateTime.fromMillis(this.timestamp).setZone(timezone);
+    const offsetHours = dt.offset / 60;
+    const sign = offsetHours >= 0 ? '+' : '';
+    return `UTC${sign}${offsetHours}`;
+  }
+
+  isDSTActive(timezone: string): boolean {
+    const dt = DateTime.fromMillis(this.timestamp).setZone(timezone);
+    return dt.isInDST;
+  }
+
+  getDSTStatus(timezone: string): string {
+    const dt = DateTime.fromMillis(this.timestamp).setZone(timezone);
+    if (dt.isInDST) {
+      return 'DST Aktiv';
+    } else {
+      return 'Standard Tid';
+    }
   }
 }
